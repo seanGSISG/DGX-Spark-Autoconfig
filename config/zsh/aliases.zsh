@@ -104,3 +104,31 @@ command -v lazygit &>/dev/null && alias lg='lazygit'
 
 # lazydocker - Docker TUI
 command -v lazydocker &>/dev/null && alias lzd='lazydocker'
+
+# duf - Better df
+command -v duf &>/dev/null && alias df='duf'
+
+# ncdu - Interactive disk usage
+command -v ncdu &>/dev/null && alias du='ncdu'
+
+# =============================================================================
+# Tailscale (VPN)
+# =============================================================================
+if command -v tailscale &>/dev/null; then
+  alias ts='tailscale status'
+  alias tsup='sudo tailscale up'
+  alias tsdown='sudo tailscale down'
+  alias tsip='tailscale ip -4'
+fi
+
+# =============================================================================
+# Quick Help (tldr)
+# =============================================================================
+# tldr provides simplified man pages - much easier to read
+command -v tldr &>/dev/null && alias help='tldr'
+
+# =============================================================================
+# SSH / Remote Access
+# =============================================================================
+# Mosh with common options
+alias mssh='mosh --ssh="ssh -o StrictHostKeyChecking=no"'

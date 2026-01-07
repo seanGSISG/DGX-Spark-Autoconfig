@@ -258,9 +258,33 @@ phase5_cli_tools() {
         fzf
         direnv
         git-lfs
+        mosh        # Mobile shell - resilient SSH alternative
+        ncdu        # Interactive disk usage analyzer
+        tldr        # Simplified man pages
     )
 
     as_root apt-get install -y "${apt_packages[@]}" || true
+
+    # Install duf (modern df replacement)
+    if ! has_cmd duf; then
+        log_info "Installing duf..."
+        as_root apt-get install -y duf 2>/dev/null || {
+            # Fallback: download from GitHub releases
+            local duf_version="0.8.1"
+            local duf_url="https://github.com/muesli/duf/releases/download/v${duf_version}/duf_${duf_version}_linux_${DEB_ARCH}.deb"
+            curl -fsSL "$duf_url" -o /tmp/duf.deb && as_root dpkg -i /tmp/duf.deb && rm /tmp/duf.deb
+        } || true
+    fi
+
+    # Install Tailscale (VPN mesh networking)
+    if ! has_cmd tailscale; then
+        log_info "Installing Tailscale..."
+        curl -fsSL https://tailscale.com/install.sh | sh || {
+            log_warn "Tailscale installation failed - you can install manually later"
+        }
+    else
+        log_success "Tailscale already installed"
+    fi
 
     # Install lsd (may need to try multiple methods)
     if ! has_cmd lsd; then
