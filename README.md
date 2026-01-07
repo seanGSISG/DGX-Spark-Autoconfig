@@ -7,7 +7,8 @@ Automated development environment setup for **Linux systems** (Debian/Ubuntu). P
 ## Features
 
 - **Shell**: zsh + Oh My Zsh + Powerlevel10k (lean theme)
-- **CLI Tools**: lsd, bat, ripgrep, fzf, fd, btop, lazygit, neovim
+- **CLI Tools**: lsd, bat, ripgrep, fzf, fd, btop, lazygit, neovim, ncdu, duf
+- **VPS/Remote**: Tailscale (VPN), mosh (resilient SSH), tmux
 - **Python**: UV (Astral) for fast venv/package management
 - **AI Agents**: Claude Code + Codex CLI (with "vibe mode" aliases)
 - **Configs**: Ghostty terminal, tmux, Claude Code git safety hooks
@@ -27,6 +28,29 @@ cd linux-dev-autoconfig
 exec zsh
 ```
 
+**After installation:**
+```bash
+# Connect to Tailscale (first time)
+sudo tailscale up
+
+# Update tldr pages
+tldr --update
+
+# Check what's installed
+devenv info
+```
+
+## Documentation
+
+Comprehensive documentation is available in the [`docs/`](docs/) folder:
+
+| Document | Description |
+|----------|-------------|
+| [docs/tools.md](docs/tools.md) | All installed tools with usage examples |
+| [docs/aliases.md](docs/aliases.md) | Complete shell alias reference |
+| [docs/commands.md](docs/commands.md) | CLI commands and utilities |
+| [docs/keybindings.md](docs/keybindings.md) | Ghostty, tmux, and shell shortcuts |
+
 ## Installation Phases
 
 | Phase | Description |
@@ -35,41 +59,43 @@ exec zsh
 | 2 | User setup (permissions, groups) |
 | 3 | Filesystem (directories, configs) |
 | 4 | Shell setup (Oh My Zsh, Powerlevel10k, plugins) |
-| 5 | CLI tools (lsd, bat, ripgrep, tmux, etc.) |
+| 5 | CLI tools (lsd, bat, ripgrep, Tailscale, mosh, etc.) |
 | 6 | AI agents (UV, Bun, Codex CLI, hooks) |
 
-## Key Customizations
+## Installed Tools
 
-### Minimal `ls` Output (lsd)
+### Modern CLI Replacements
 
-By default, `ls` shows only **icons + names** (no dates, sizes, permissions):
+| Tool | Replaces | Features |
+|------|----------|----------|
+| `lsd` | `ls` | Icons, colors, tree view |
+| `bat` | `cat` | Syntax highlighting |
+| `ripgrep` | `grep` | 10x faster, respects .gitignore |
+| `fd` | `find` | Simpler syntax, faster |
+| `btop` | `top` | Beautiful resource monitor |
+| `duf` | `df` | Modern disk usage |
+| `ncdu` | `du` | Interactive disk analyzer |
 
-```bash
-alias ls='lsd --icon=always'      # Minimal: icons + names only
-alias ll='lsd -l --icon=always'   # Long format when needed
-alias la='lsd -la --icon=always'  # All files with long format
-```
+### VPS & Remote Access
 
-### Agent Aliases ("Vibe Mode")
+| Tool | Purpose |
+|------|---------|
+| `Tailscale` | VPN mesh networking - secure access without opening ports |
+| `mosh` | Mobile shell - survives disconnects and roaming |
+| `tmux` | Terminal multiplexer - persistent sessions |
 
-```bash
-ccd   # Claude Code with --dangerously-skip-permissions
-cod   # Codex CLI with --dangerously-bypass-approvals-and-sandbox
-uca   # Update all agent CLIs
-```
+### Key Aliases
 
-### Ghostty Keybindings
+| Alias | Description |
+|-------|-------------|
+| `ts` | Tailscale status |
+| `tsup` | Connect to Tailscale |
+| `tsip` | Show Tailscale IP |
+| `help` | Simplified man pages (tldr) |
+| `lg` | Lazygit TUI |
+| `ccd` | Claude Code (dangerous mode) |
 
-| Action | Keybinding |
-|--------|------------|
-| New tab | Ctrl+Shift+T |
-| Close tab | Ctrl+Shift+W |
-| Next/prev tab | Ctrl+Tab / Ctrl+Shift+Tab |
-| Split right | Ctrl+Shift+D |
-| Split down | Ctrl+Shift+E |
-| Navigate splits | Ctrl+Shift+H/J/K/L |
-| Font size +/- | Ctrl++/- |
-| Reset font | Ctrl+0 |
+See [docs/aliases.md](docs/aliases.md) for the complete list.
 
 ## Directory Structure
 
@@ -77,11 +103,10 @@ uca   # Update all agent CLIs
 ~/.devenv/             # Main config directory
   zsh/
     devenv.zshrc       # Main shell config
+    aliases.zsh        # All shell aliases
     p10k.zsh           # Powerlevel10k config
   tmux/
     tmux.conf          # Tmux config
-  scripts/lib/
-    dgx.sh             # System utilities
 
 ~/.config/ghostty/     # Ghostty terminal config
 ~/.claude/             # Claude Code config
@@ -100,15 +125,6 @@ devenv update    # Update tools
 devenv version   # Show version
 devenv help      # Show help
 ```
-
-### Common Aliases
-
-| Alias | Command |
-|-------|---------|
-| `gs` | `git status` |
-| `gd` | `git diff` |
-| `lg` | `lazygit` |
-| `dev` | `cd ~/dev` |
 
 ## Requirements
 
