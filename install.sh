@@ -374,12 +374,15 @@ phase6_agents_finalization() {
     export BUN_INSTALL="$TARGET_HOME/.bun"
     export PATH="$BUN_INSTALL/bin:$PATH"
 
-    # Check Claude Code (should already be installed)
+    # Install Claude Code
     if [[ -x "$TARGET_HOME/.local/bin/claude" ]]; then
         log_success "Claude Code already installed"
     else
-        log_warn "Claude Code not found - install manually with:"
-        log_info "  curl -fsSL https://claude.ai/install.sh | bash"
+        log_info "Installing Claude Code..."
+        curl -fsSL https://claude.ai/install.sh | sh || {
+            log_warn "Claude Code installation failed - install manually with:"
+            log_info "  curl -fsSL https://claude.ai/install.sh | sh"
+        }
     fi
 
     # Install Codex CLI via Bun
@@ -511,12 +514,31 @@ main() {
     log_success "Linux Dev Autoconfig installation complete!"
     echo "=============================================="
     echo ""
-    echo "Next steps:"
-    echo "  1. Start a new terminal or run: exec zsh"
-    echo "  2. Run 'devenv info' to verify setup"
-    echo "  3. Run 'codex login' to authenticate Codex CLI"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "REQUIRED: Complete these steps to finish setup"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "Useful commands:"
+    echo "1. Activate zsh shell:"
+    echo "   exec zsh"
+    echo ""
+    echo "2. Connect to Tailscale VPN (opens browser for auth):"
+    echo "   sudo tailscale up"
+    echo ""
+    echo "3. Reboot to load the latest kernel (recommended):"
+    echo "   sudo reboot"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Optional: Authenticate CLI tools"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "  claude login     - Authenticate Claude Code"
+    echo "  codex login      - Authenticate Codex CLI"
+    echo "  gh auth login    - Authenticate GitHub CLI"
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "Useful commands after setup"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
     echo "  ls          - List files with icons (lsd)"
     echo "  ccd         - Claude Code (dangerously enabled)"
     echo "  cod         - Codex CLI (dangerously enabled)"
