@@ -22,10 +22,7 @@ linux-dev-autoconfig/
 │   │   ├── devenv.zshrc         # Main shell configuration
 │   │   └── p10k.zsh             # Powerlevel10k theme config
 │   ├── tmux/tmux.conf           # Tmux configuration
-│   ├── ghostty/config           # Ghostty terminal config
-│   └── claude/
-│       ├── settings.json        # Claude Code hook settings
-│       └── hooks/git_safety_guard.py  # Git safety hook
+│   └── ghostty/config           # Ghostty terminal config
 └── scripts/lib/
     └── dgx.sh                   # System utilities
 ```
@@ -58,14 +55,6 @@ The `ls` alias uses `lsd --icon=always` for minimal output (icons + names only, 
 ccd   # Claude Code with --dangerously-skip-permissions
 cod   # Codex CLI with --dangerously-bypass-approvals-and-sandbox
 ```
-
-### Git Safety Hook
-The `git_safety_guard.py` hook blocks destructive git commands:
-- `git reset --hard`
-- `git push --force` (without --force-with-lease)
-- `git clean -f`
-- `git checkout .`
-- `rm -rf` outside /tmp
 
 ## Commands
 

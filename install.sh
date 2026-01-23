@@ -1,18 +1,31 @@
 #!/usr/bin/env bash
 # ============================================================
-# Linux Dev Autoconfig - Bootstrap Installer
+# Linux Dev Autoconfig - Complete Dev Environment Setup
 # ============================================================
-# Two-stage installer:
-#   Stage 1: Install minimal deps + chezmoi (this script)
-#   Stage 2: chezmoi applies configs and runs tool installation
+# Self-contained installer that sets up a full dev environment:
+#   - CLI tools (bat, lsd, fd, rg, fzf, etc.)
+#   - Shell (zsh + Oh My Zsh + Powerlevel10k)
+#   - Configs (aliases, tmux, ghostty)
+#   - AI agents (Claude Code, Codex)
+#   - Optionally: private dotfiles via chezmoi
 #
 # Usage: curl -fsSL https://raw.githubusercontent.com/seanGSISG/linux-dev-autoconfig/main/install.sh | bash
 # ============================================================
 
 set -euo pipefail
 
-VERSION="2.0.0"
+VERSION="3.0.0"
+REPO_URL="https://github.com/seanGSISG/linux-dev-autoconfig"
 DOTFILES_REPO="seanGSISG/dotfiles"
+
+# Detect architecture
+ARCH="$(uname -m)"
+case "$ARCH" in
+    x86_64)  DEB_ARCH="amd64"; TARBALL_ARCH="x86_64" ;;
+    aarch64) DEB_ARCH="arm64"; TARBALL_ARCH="arm64" ;;
+    arm64)   DEB_ARCH="arm64"; TARBALL_ARCH="arm64" ;;
+    *)       echo "Unsupported architecture: $ARCH"; exit 1 ;;
+esac
 
 # Colors
 RED='\033[0;31m'
@@ -38,49 +51,205 @@ as_root() {
 }
 
 # ============================================================
-# Stage 1: Minimal Bootstrap
+# Phase 1: Base Dependencies
 # ============================================================
 
-install_minimal_deps() {
-    log_info "Installing minimal dependencies..."
+install_base_deps() {
+    log_info "Installing base dependencies..."
+
     as_root apt-get update -y
-    as_root apt-get install -y curl git age
-    log_success "Minimal dependencies installed"
+
+    local packages=(
+        curl git wget ca-certificates unzip tar xz-utils jq
+        build-essential gnupg lsb-release zsh software-properties-common
+    )
+
+    as_root apt-get install -y "${packages[@]}"
+    log_success "Base dependencies installed"
 }
 
-install_chezmoi() {
-    if has_cmd chezmoi; then
-        log_success "chezmoi already installed"
-        return
+# ============================================================
+# Phase 2: CLI Tools
+# ============================================================
+
+install_cli_tools() {
+    log_info "Installing CLI tools..."
+
+    # APT packages
+    local apt_packages=(ripgrep tmux fzf direnv git-lfs mosh ncdu tldr)
+    as_root apt-get install -y "${apt_packages[@]}" || true
+
+    # duf
+    if ! has_cmd duf; then
+        as_root apt-get install -y duf 2>/dev/null || {
+            local duf_version="0.8.1"
+            curl -fsSL "https://github.com/muesli/duf/releases/download/v${duf_version}/duf_${duf_version}_linux_${DEB_ARCH}.deb" -o /tmp/duf.deb
+            as_root dpkg -i /tmp/duf.deb && rm /tmp/duf.deb
+        } || true
     fi
 
-    log_info "Installing chezmoi..."
-    sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
-    export PATH="$HOME/.local/bin:$PATH"
-    log_success "chezmoi installed"
+    # Tailscale
+    if ! has_cmd tailscale; then
+        log_info "Installing Tailscale..."
+        curl -fsSL https://tailscale.com/install.sh | bash || log_warn "Tailscale installation failed"
+    fi
+
+    # lsd
+    if ! has_cmd lsd; then
+        as_root apt-get install -y lsd 2>/dev/null || {
+            local lsd_version="1.1.5"
+            curl -fsSL "https://github.com/lsd-rs/lsd/releases/download/v${lsd_version}/lsd_${lsd_version}_${DEB_ARCH}.deb" -o /tmp/lsd.deb
+            as_root dpkg -i /tmp/lsd.deb && rm /tmp/lsd.deb
+        }
+    fi
+
+    # bat, fd, btop, neovim, lazygit, gh
+    as_root apt-get install -y bat fd-find btop neovim gh 2>/dev/null || true
+
+    # lazygit fallback
+    if ! has_cmd lazygit; then
+        local lazygit_version="0.44.1"
+        curl -fsSL "https://github.com/jesseduffield/lazygit/releases/download/v${lazygit_version}/lazygit_${lazygit_version}_Linux_${TARBALL_ARCH}.tar.gz" | tar xz -C /tmp lazygit
+        as_root mv /tmp/lazygit /usr/local/bin/
+    fi
+
+    log_success "CLI tools installed"
 }
 
 # ============================================================
-# Stage 2: Chezmoi Dotfiles
+# Phase 3: Shell Setup (Oh My Zsh + Powerlevel10k)
 # ============================================================
 
-setup_dotfiles() {
+install_shell_plugins() {
+    log_info "Installing shell plugins..."
+
+    # Oh My Zsh
+    if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+        log_info "Installing Oh My Zsh..."
+        RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    fi
+
+    # Powerlevel10k
+    local p10k_dir="$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
+    if [[ ! -d "$p10k_dir" ]]; then
+        log_info "Installing Powerlevel10k..."
+        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dir"
+    fi
+
+    # zsh-autosuggestions
+    local autosuggestions_dir="$HOME/.oh-my-zsh/custom/plugins/zsh-autosuggestions"
+    if [[ ! -d "$autosuggestions_dir" ]]; then
+        git clone --depth=1 https://github.com/zsh-users/zsh-autosuggestions "$autosuggestions_dir"
+    fi
+
+    # zsh-syntax-highlighting
+    local syntax_dir="$HOME/.oh-my-zsh/custom/plugins/zsh-syntax-highlighting"
+    if [[ ! -d "$syntax_dir" ]]; then
+        git clone --depth=1 https://github.com/zsh-users/zsh-syntax-highlighting.git "$syntax_dir"
+    fi
+
+    # Change default shell to zsh
+    if [[ "$SHELL" != "$(which zsh)" ]]; then
+        log_info "Changing default shell to zsh..."
+        as_root chsh -s "$(which zsh)" "$(whoami)"
+    fi
+
+    log_success "Shell plugins installed"
+}
+
+# ============================================================
+# Phase 4: AI Agents
+# ============================================================
+
+install_ai_agents() {
+    log_info "Installing AI agents..."
+
+    # UV (Python package manager)
+    if ! has_cmd uv; then
+        curl -LsSf https://astral.sh/uv/install.sh | bash
+    fi
+
+    # Bun
+    if ! has_cmd bun && [[ ! -x "$HOME/.bun/bin/bun" ]]; then
+        curl -fsSL https://bun.sh/install | bash
+    fi
+
+    export BUN_INSTALL="$HOME/.bun"
+    export PATH="$BUN_INSTALL/bin:$PATH"
+
+    # Claude Code
+    if [[ ! -x "$HOME/.local/bin/claude" ]]; then
+        log_info "Installing Claude Code..."
+        curl -fsSL https://claude.ai/install.sh | bash || log_warn "Claude Code installation failed"
+    fi
+
+    # Codex CLI
+    if [[ -x "$HOME/.bun/bin/bun" ]]; then
+        "$HOME/.bun/bin/bun" install -g --trust @openai/codex@latest || true
+    fi
+
+    log_success "AI agents installed"
+}
+
+# ============================================================
+# Phase 5: Apply Configs
+# ============================================================
+
+apply_configs() {
+    log_info "Applying configurations..."
+
+    # Clone or update repo
+    local repo_dir="$HOME/.linux-dev-autoconfig"
+    if [[ -d "$repo_dir" ]]; then
+        git -C "$repo_dir" pull --ff-only 2>/dev/null || true
+    else
+        git clone --depth=1 "$REPO_URL" "$repo_dir"
+    fi
+
+    # Create directories
+    mkdir -p "$HOME/.config/ghostty"
+    mkdir -p "$HOME/.dgxspark/zsh"
+    mkdir -p "$HOME/.dgxspark/tmux"
+    mkdir -p "$HOME/dev/github"
+    mkdir -p "$HOME/.local/bin"
+
+    # Copy configs
+    cp "$repo_dir/config/zsh/devenv.zshrc" "$HOME/.zshrc"
+    cp "$repo_dir/config/zsh/p10k.zsh" "$HOME/.p10k.zsh"
+    cp "$repo_dir/config/zsh/aliases.zsh" "$HOME/.dgxspark/zsh/aliases.zsh"
+    cp "$repo_dir/config/tmux/tmux.conf" "$HOME/.tmux.conf"
+    cp "$repo_dir/config/ghostty/config" "$HOME/.config/ghostty/config"
+
+    log_success "Configurations applied"
+}
+
+# ============================================================
+# Phase 6: Private Dotfiles (Optional)
+# ============================================================
+
+setup_private_dotfiles() {
     echo ""
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${CYAN}  Private Dotfiles Setup${NC}"
+    echo -e "${CYAN}  Private Dotfiles Setup (Optional)${NC}"
     echo -e "${CYAN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
-    echo "This will set up your private configs (SSH, Claude knowledge base, etc.)"
+    echo "This will set up your private configs (SSH, Claude knowledge base)"
     echo "You'll need your age decryption key from Bitwarden."
     echo ""
 
-    read -p "Set up private dotfiles? [Y/n] " -n 1 -r
+    read -p "Set up private dotfiles? [y/N] " -n 1 -r
     echo ""
 
-    if [[ $REPLY =~ ^[Nn]$ ]]; then
-        log_warn "Skipping dotfiles setup"
-        log_info "You can set up later with: chezmoi init --apply $DOTFILES_REPO"
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_info "Skipping private dotfiles"
         return
+    fi
+
+    # Install age and chezmoi
+    as_root apt-get install -y age
+    if ! has_cmd chezmoi; then
+        sh -c "$(curl -fsLS get.chezmoi.io)" -- -b "$HOME/.local/bin"
+        export PATH="$HOME/.local/bin:$PATH"
     fi
 
     # Check for age key
@@ -107,9 +276,9 @@ setup_dotfiles() {
     fi
 
     # Initialize and apply chezmoi
-    log_info "Applying dotfiles..."
-    "$HOME/.local/bin/chezmoi" init --apply "$DOTFILES_REPO"
-    log_success "Dotfiles applied"
+    log_info "Applying private dotfiles..."
+    "$HOME/.local/bin/chezmoi" init --apply --source "$HOME/dev/github/dotfiles" "$DOTFILES_REPO"
+    log_success "Private dotfiles applied"
 }
 
 # ============================================================
@@ -120,7 +289,6 @@ main() {
     echo ""
     echo "=============================================="
     echo "  Linux Dev Autoconfig v${VERSION}"
-    echo "  Bootstrap Installer"
     echo "=============================================="
     echo ""
 
@@ -130,16 +298,16 @@ main() {
         exit 1
     fi
 
-    # Stage 1: Minimal deps
-    install_minimal_deps
-    install_chezmoi
-
-    # Stage 2: Dotfiles (optional)
-    setup_dotfiles
+    install_base_deps
+    install_cli_tools
+    install_shell_plugins
+    install_ai_agents
+    apply_configs
+    setup_private_dotfiles
 
     echo ""
     echo "=============================================="
-    log_success "Bootstrap complete!"
+    log_success "Setup complete!"
     echo "=============================================="
     echo ""
     echo "Next steps:"

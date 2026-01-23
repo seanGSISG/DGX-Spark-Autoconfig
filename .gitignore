@@ -1,0 +1,21 @@
+# OS files
+.DS_Store
+Thumbs.db
+*~
+
+# Editor files
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-*
+
+# Environment files
+.env
+.env.*
+
+# Credentials (should never be here, but just in case)
+*.pem
+*.key
+key.txt
+credentials*
